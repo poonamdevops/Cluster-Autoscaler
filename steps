@@ -1,0 +1,101 @@
+##Create file and paste policy for autoscaler
+Name of clusterautoscaler.json and the paste following policy into that
+
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+      {
+          "Action": [
+              "autoscaling:DescribeAutoScalingGroups",
+              "autoscaling:DescribeAutoScalingInstances",
+              "autoscaling:DescribeLaunchConfigurations",
+              "autoscaling:DescribeTags",
+              "autoscaling:SetDesiredCapacity",
+              "autoscaling:TerminateInstanceInAutoScalingGroup",
+              "ec2:DescribeLaunchTemplateVersions"
+          ],
+          "Resource": "*",
+          "Effect": "Allow"
+      }
+  ]
+}
+
+
+##  aws iam create-policy --policy-name AmazonEKSClusterAutoscalerPolicy --policy-document file://clusterautoscaler.json
+
+
+
+##Create Service account ---here service account is created by command so service account command made comment in autoscaler yaml
+
+
+eksctl create iamserviceaccount --name cluster-autoscaler --namespace kube-system --cluster <cluster-name> --attach-policy-arn "arn:aws:iam::331523302307:policy/AmazonEKSClusterAutoscalerPolicy" --approve --region us-east-1
+
+
+### kubectl apply -f https://www.eksworkshop.com/beginner/080_scaling/deploy_ca.files/cluster-autoscaler-autodiscover.yaml  ---This is the yaml of autoscalar 
+
+
+First apply then open in edit 
+Kubectl edit https://www.eksworkshop.com/beginner/080_scaling/deploy_ca.files/cluster-autoscaler-autodiscover.yaml  -n kube-system
+
+
+
+##Open this file and edit name of cluster in nodegrp autodiscovery line and then kubectl apply -f filename--             - --node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/WheelsEMI-UAT-2-EKS-Cluster(This is the cluster name instead of eksctlworkshop) # Update cluster
+
+
+
+#Kubectl get pods -n kube-system
+
+
+kubectl describe pod cluster-autoscaler-6dfc898799-q7ktg 
+
+
+##kubectl get deployment  -n kube-system --to verify cA installed
+
+
+##kubectl -n kube-system logs -f deployment/cluster-autoscaler
+--check logs CA
+
+
+##  kubectl scale deploy nginx-deployment --replicas 10 -n ----pod is in default no need to add namespace
+Use above command to verify the autoscaler running properly or not
+
+--------------------------------------------------------------------------------------------------------Upto this doc is correct
+
+#kubectl rollout restart deploy cluster-autoscaler -n kube-system
+
+
+
+#kubectl logs cluster-autoscaler-6dfc898799-q7ktg -n kube-system
+
+
+kubectl logs cluster-autoscaler-765bc77979-8wbjs -n kube-system -w
+
+
+##kubectl get clusterrole -A
+
+
+##W0405 11:24:38.371367       1 reflector.go:539] k8s.io/client-go/informers/factory.go:159: failed to list *v1.Namespace: namespaces is forbidden: User "system:serviceaccount:kube-system:cluster-autoscaler" cannot list resource "namespaces" in API group "" at the cluster scope
+E0405 11:24:38.371401       1 reflector.go:147] k8s.io/client-go/informers/factory.go:159: Failed to watch *v1.Namespace: failed to list *v1.Namespace: namespaces is forbidden: User "system:serviceaccount:kube-system:cluster-autoscaler" cannot list resource "namespaces" in API group "" at the cluster scope
+
+##For resolve above 
+
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - list
+  - watch
+
+
+##W0405 10:59:18.926144       1 reflector.go:539] k8s.io/client-go/informers/factory.go:159: failed to list *v1.CSIStorageCapacity: csistoragecapacities.storage.k8s.io is forbidden: User "system:serviceaccount:kube-system:cluster-autoscaler" cannot list resource "csistoragecapacities" in API group "storage.k8s.io" at the cluster scope
+E0405 10:59:18.926174       1 reflector.go:147] k8s.io/client-go/informers/factory.go:159: Failed to watch *v1.CSIStorageCapacity: failed to list *v1.CSIStorageCapacity: csistoragecapacities.storage.k8s.io is forbidden: User "system:serviceaccount:kube-system:cluster-autoscaler" cannot list resource "csistoragecapacities" in API group "storage.k8s.io" at the cluster scope
+
+
+##To resolve - csidrivers
+  - csistoragecapacities
+
+
+###kubectl edit clusterrole cluster-autoscaler
+
