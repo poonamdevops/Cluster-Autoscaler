@@ -1,4 +1,4 @@
-##Create file and paste policy for autoscaler
+##Create file and paste policy for autoscaler in vs code where your all files of k8
 Name of clusterautoscaler.json and the paste following policy into that
 
 
